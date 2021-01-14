@@ -1,316 +1,199 @@
-import io
-import json
-import math
-import os
-import re
-import time
+from math import ceil
+from re import compile
 
-from telethon import Button, custom, events
+from telethon.events import InlineQuery, callbackquery
+from telethon.sync import custom
+from telethon.tl.functions.channels import JoinChannelRequest
 
-from userbot import ALIVE_NAME
+from userbot import *
+from userbot.utils import *
 
-from . import CMD_LIST
+def button(page, modules):
+    Row = config.NO_OF_BUTTONS_DISPLAYED_IN_H_ME_CMD
+    Column = config.NO_OF_COLOUMS_DISPLAYED_IN_H_ME_CMD
 
-DEFAULTUSER = str(ALIVE_NAME) if ALIVE_NAME else "@MEGASTAR_SUPPORT"
+    modules = sorted([modul for modul in modules if not modul.startswith(◉‿◉)])
+    pairs = list(map(list, zip(modules[::2], modules[1::2])))
+    if len(modules) % 2 == 1:
+        pairs.append([modules[-1]])
+    max_pages = ceil(len(pairs) / Row)
+    pairs = [pairs[i : i + Row] for i in range(0, len(pairs), Row)]
+    buttons = []
+    for pairs in pairs[page]:
+        buttons.append(
+            [
+                custom.Button.inline("✰ " + pair, data=f"Information[{page}]({pair})")
+                for pair in pairs
+            ]
+        )
 
-PGL_IMG = config.ALIVE_PIC or None
-BTN_URL_REGEX = re.compile(r"(\[([^\[]+?)\]\<buttonurl:(?:/{0,2})(.+?)(:same)?\>)")
-
+    buttons.append(
+        [
+            custom.Button.inline(
+                "☜," data=f"page({(max_pages - 1) if page == 0 else (page - 1)})"
+            ),
+            custom.Button.inline(
+              "⌧", data="close"
+            ),
+            custom.Button.inline(
+                "☞", data=f"page({0 if page == (max_pages - 1) else page + 1})"
+            ),
+        ]
+    )
+    return [max_pages, buttons]
+    
+    modules = CMD_HELP
 if Var.TG_BOT_USER_NAME_BF_HER is not None and tgbot is not None:
-
-    @tgbot.on(events.InlineQuery)
+    @tgbot.on(InlineQuery)  # pylint:disable=E0602
     async def inline_handler(event):
         builder = event.builder
         result = None
         query = event.text
-        hmm = re.compile("secret (.*) (.*)")
-        match = re.findall(hmm, query)
-        if query.startswith("**megastar userbot") and event.query.user_id == bot.uid:
-            buttons = [
-                (
-                    custom.Button.inline("Stats", data="stats"),
-                    Button.url("Repo", "https://github.com/Bristi-OP/MEGASTAR"),
-                )
-            ]
-            if PGL_IMG and PGL_IMG.endswith((".jpg", ".png")):
-                result = builder.photo(
-                    PGL_IMG,
-                    # title="Alive ",
-                    text=query,
-                    buttons=buttons,
-                )
-            elif PGL_IMG:
-                result = builder.document(
-                    PGL_IMG,
-                    title="Alive",
-                    text=query,
-                    buttons=buttons,
-                )
-            else:
-                result = builder.article(
-                    title="Alive",
-                    text=query,
-                    buttons=buttons,
-                )
-            await event.answer([result] if result else None)
-        elif event.query.user_id == bot.uid and query.startswith("Userbot"):
+        if event.query.user_id == bot.uid and query == "@MEGASTAR_USERBOT":
             rev_text = query[::-1]
-            buttons = paginate_help(0, CMD_LIST, "helpme")
-            result = builder.article(
-                "© Megastar",
-                text="{} **Help menu Provided by ✨{}✨ \nMegastar Helper to reveal all the commands 🥳\nDo** `.help plugin_name` **for commands, in case popup doesn't appear.🌹\n @MEGASTAR_SUPPORT\nCurrently Loaded Plugins**: {}".format(
-                    query, DEFAULTUSER, len(CMD_LIST)
-                ),
-                buttons=buttons,
+            veriler = button(0, sorted(CMD_HELP))
+            result = await builder.article(
+                f"Hey! Only use .help please",
+                text=f"**Megastar Helper to reveal all the commands 🥳\nDo** `.help plugin_name` **for commands, in case popup doesn't appear.🌹\n @MEGASTAR_SUPPORT\nCurrently Loaded Plugins**:`{len(CMD_HELP)}`\n**page:** 1/{veriler[0]}",
+                buttons=veriler[1],
                 link_preview=False,
             )
-            await event.answer([result] if result else None)
-        elif event.query.user_id == bot.uid and query.startswith("Inline buttons"):
-            markdown_note = query[14:]
-            prev = 0
-            note_data = ""
-            buttons = []
-            for match in BTN_URL_REGEX.finditer(markdown_note):
-                # Check if btnurl is escaped
-                n_escapes = 0
-                to_check = match.start(1) - 1
-                while to_check > 0 and markdown_note[to_check] == "\\":
-                    n_escapes += 1
-                    to_check -= 1
-                # if even, not escaped -> create button
-                if n_escapes % 2 == 0:
-                    # create a thruple with button label, url, and newline
-                    # status
-                    buttons.append(
-                        (match.group(2), match.group(3), bool(match.group(4)))
-                    )
-                    note_data += markdown_note[prev : match.start(1)]
-                    prev = match.end(1)
-                # if odd, escaped -> move along
-                else:
-                    note_data += markdown_note[prev:to_check]
-                    prev = match.start(1) - 1
-            else:
-                note_data += markdown_note[prev:]
-            message_text = note_data.strip()
-            tl_ib_buttons = ibuild_keyboard(buttons)
+        elif query.startswith("http"):
+            part = query.split(" ")
             result = builder.article(
-                title="Inline creator",
-                text=message_text,
-                buttons=tl_ib_buttons,
+                "File uploaded",
+                text=f"**File uploaded successfully to {part[2]} site.\n\nUpload Time : {part[1][:3]} second\n[‏‏‎ ‎]({part[0]})",
+                buttons=[[custom.Button.url("URL", part[0])]],
+                link_preview=True,
+            )
+        else:
+            result = builder.article(
+                "@MEGASTAR_USERBOT",
+                text="""**Hey! This is [🄼🄴🄶🄰🅂🅃🄰🅁](https://t.me/MEGASTAR_USERBOT) \nYou can know more about me from the links given below 👇**""",
+                buttons=[
+                    [
+                        custom.Button.url(" 𝙲𝚑𝚊𝚗𝚗𝚎𝚕 ", "https://t.me/MEGASTAR_USERBOT"),
+                        custom.Button.url(
+                            "𝙶𝚛𝚘𝚞𝚙 ", "https://t.me/ /MEGASTAR_SUPPORT"
+                        ),
+                    ],
+                    [
+                        custom.Button.url(
+                            "𝚁𝚎𝚙𝚘𝚜𝚒𝚝𝚘𝚛𝚢 ", "https://github.com/Bristi-OP/MEGASTAR"),
+                        custom.Button.url
+                    (
+                            " 𝚃𝚞𝚝𝚘𝚛𝚒𝚊𝚕", "http://youtu.be/bzk16hwJVr0"
+                    )
+                    ],
+                ],
                 link_preview=False,
             )
-            await event.answer([result] if result else None)
-        elif event.query.user_id == bot.uid and match:
-            query = query[7:]
-            user, txct = query.split(" ", 1)
-            builder = event.builder
-            secret = os.path.join("./userbot", "secrets.txt")
-            try:
-                jsondata = json.load(open(secret))
-            except BaseException:
-                jsondata = False
-            try:
-                # if u is user id
-                u = int(user)
-                try:
-                    u = await event.client.get_entity(u)
-                    if u.username:
-                        krishan = f"@{u.username}"
-                    else:
-                        krishan = f"[{u.first_name}](tg://user?id={u.id})"
-                except ValueError:
-                    # ValueError: Could not find the input entity
-                    krishan = f"[user](tg://user?id={u})"
-            except ValueError:
-                # if u is username
-                try:
-                    u = await event.client.get_entity(user)
-                except ValueError:
-                    return
-                if u.username:
-                    krishan = f"@{u.username}"
-                else:
-                    krishan = f"[{u.first_name}](tg://user?id={u.id})"
-                u = int(u.id)
-            except BaseException:
-                return
-            timestamp = int(time.time() * 2)
-            newsecret = {str(timestamp): {"userid": u, "text": txct}}
+        await event.answer([result] if result else None)
 
-            buttons = [
-                custom.Button.inline("show message 🔐", data=f"secret_{timestamp}")
-            ]
-            result = builder.article(
-                title="secret message",
-                text=f"🔒 A whisper message to {shiva}, Only he/she can open it.",
-                buttons=buttons,
+    @tgbot.on(callbackquery.CallbackQuery(data=compile(b"page\((.+?)\)")))
+    async def page(event):
+        if not event.query.user_id == bot.uid:
+            return await event.answer(
+                "Please Deploy your own Megastar userbot.. don't try to use mine😕",
+                cache_time=0,
+                alert=True,
             )
-            await event.answer([result] if result else None)
-            if jsondata:
-                jsondata.update(newsecret)
-                json.dump(jsondata, open(secret, "w"))
-            else:
-                json.dump(newsecret, open(secret, "w"))
-
-    @tgbot.on(
-        events.callbackquery.CallbackQuery(  # pylint:disable=E0602
-            data=re.compile(rb"helpme_next\((.+?)\)")
+        page = int(event.data_match.group(1).decode("UTF-8"))
+        veriler = button(page, CMD_HELP)
+        await event.edit(
+            f"**Megastar Helper to reveal all the commands 🥳\nDo** `.help plugin_name` **for commands, in case popup doesn't appear.🌹\n @MEGASTAR_SUPPORT\nCurrently Loaded Plugins:** `{len(CMD_HELP)}`\n**page:** {page + 1}/{veriler[0]}",
+            buttons=veriler[1],
+            link_preview=False,
         )
-    )
-    async def on_plug_in_callback_query_handler(event):
-        if event.query.user_id == bot.uid:  # pylint:disable=E0602
-            current_page_number = int(event.data_match.group(1).decode("UTF-8"))
-            buttons = paginate_help(current_page_number + 1, CMD_LIST, "helpme")
-            # https://t.me/TelethonChat/115200
-            await event.edit(buttons=buttons)
-        else:
-            reply_pop_up_alert = "Please get your own Megastar userbot, and don't use mine! Join @MEGASTAR_SUPPORT for help"
-            await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
-
-    @tgbot.on(
-        events.callbackquery.CallbackQuery(  # pylint:disable=E0602
-            data=re.compile(rb"helpme_prev\((.+?)\)")
-        )
-    )
-    async def on_plug_in_callback_query_handler(event):
-        if event.query.user_id == bot.uid:  # pylint:disable=E0602
-            current_page_number = int(event.data_match.group(1).decode("UTF-8"))
-            buttons = paginate_help(
-                current_page_number - 1, CMD_LIST, "helpme"  # pylint:disable=E0602
-            )
-            # https://t.me/TelethonChat/115200
-            await event.edit(buttons=buttons)
-        else:
-            reply_pop_up_alert = "Please get your own Megastar userbot, and don't use mine! Join @MEGASTAR_SUPPORT for help "
-            await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
-
-    @tgbot.on(events.callbackquery.CallbackQuery(data=re.compile(b"secret_(.*)")))
-    async def on_plug_in_callback_query_handler(event):
-        timestamp = int(event.pattern_match.group(1).decode("UTF-8"))
-        if os.path.exists("./userbot/secrets.txt"):
-            jsondata = json.load(open("./userbot/secrets.txt"))
-            try:
-                message = jsondata[f"{timestamp}"]
-                userid = message["userid"]
-                ids = [userid, bot.uid]
-                if event.query.user_id in ids:
-                    encrypted_tcxt = message["text"]
-                    reply_pop_up_alert = encrypted_tcxt
-                else:
-                    reply_pop_up_alert = "why were you looking at this shit go away and do your own work, idiot"
-            except KeyError:
-                reply_pop_up_alert = "This message no longer exists in bot server"
-        else:
-            reply_pop_up_alert = "This message no longer exists "
-        await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
-
-    @tgbot.on(events.callbackquery.CallbackQuery(data=re.compile(b"us_plugin_(.*)")))
-    async def on_plug_in_callback_query_handler(event):
-        if event.query.user_id == bot.uid:
-            plugin_name = event.data_match.group(1).decode("UTF-8")
-            help_string = ""
-            try:
-                for i in CMD_LIST[plugin_name]:
-                    help_string += i
-                    help_string += "\n"
-            except BaseException:
-                pass
-            if help_string == "":
-                reply_pop_up_alert = "{} is useless".format(plugin_name)
-            else:
-                reply_pop_up_alert = help_string
-            reply_pop_up_alert += (
-                "Use .unload {} to remove this plugin \n megastar userbot".format(
-                    plugin_name
-                )
-            )
-            try:
-                await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
-            except BaseException:
-                # https://github.com/Dark-Princ3/X-tra-Telegram/commit/275fd0ec26b284d042bf56de325472e088e6f364#diff-2b2df8998ff11b6c15893b2c8d5d6af3
-                with io.BytesIO(str.encode(reply_pop_up_alert)) as out_file:
-                    out_file.name = "{}.txt".format(plugin_name)
-                    await event.client.send_file(
-                        event.chat_id,
-                        out_file,
-                        force_document=True,
-                        allow_cache=False,
-                        caption=plugin_name,
-                    )
-        else:
-            reply_pop_up_alert = "Please get your own MEGASTAR userbot, and don't use mine! Join @MEGASTAR_SUPPORT for help "
-            await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
-
+        
     @tgbot.on(events.callbackquery.CallbackQuery(data=re.compile(b"close")))
     async def on_plug_in_callback_query_handler(event):
         if event.query.user_id == bot.uid:
-            await event.edit("Help menu closed ^_^")
-        else:
-            reply_pop_up_alert = "Please get your own MEGASTAR userbot, and don't use mine! Join @MEGASTAR_SUPPORT for help "
-            await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
-
-    @tgbot.on(events.callbackquery.CallbackQuery(data=re.compile(b"stats")))
-    async def on_plug_in_callback_query_handler(event):
-        statstext = await alive()
-        reply_pop_up_alert = statstext
-        await event.answer(reply_pop_up_alert, cache_time=0, alert=True)
-
-
-def paginate_help(page_number, loaded_plugins, prefix):
-    number_of_rows = config.NO_OF_BUTTONS_DISPLAYED_IN_H_ME_CMD
-    number_of_cols = config.NO_OF_COLOUMS_DISPLAYED_IN_H_ME_CMD
-    helpable_plugins = [p for p in loaded_plugins if not p.startswith("_")]
-    helpable_plugins = sorted(helpable_plugins)
-    modules = [
-        custom.Button.inline(
-            "{} {} {}".format(
-                config.EMOJI_TO_DISPLAY_IN_HELP, x, config.EMOJI_TO_DISPLAY_IN_HELP
-            ),
-            data="us_plugin_{}".format(x),
-        )
-        for x in helpable_plugins
-    ]
-    if number_of_cols == 1:
-        pairs = list(zip(modules[::number_of_cols]))
-    elif number_of_cols == 2:
-        pairs = list(zip(modules[::number_of_cols], modules[1::number_of_cols]))
-    else:
-        pairs = list(
-            zip(
-                modules[::number_of_cols],
-                modules[1::number_of_cols],
-                modules[2::number_of_cols],
+            await event.edit(
+                "✞ Megastar help menu closed ✞"
             )
-        )
-    if len(modules) % number_of_cols == 1:
-        pairs.append((modules[-1],))
-    elif len(modules) % number_of_cols == 2:
-        pairs.append((modules[-2], modules[-1]))
-    max_num_pages = math.ceil(len(pairs) / number_of_rows)
-    modulo_page = page_number % max_num_pages
-    if len(pairs) > number_of_rows:
-        pairs = pairs[
-            modulo_page * number_of_rows : number_of_rows * (modulo_page + 1)
-        ] + [
-            (
-                custom.Button.inline(
-                    "☜", data="{}_prev({})".format(prefix, modulo_page)
-                ),
-                custom.Button.inline("⌧", data="close"),
-                custom.Button.inline(
-                    "☞", data="{}_next({})".format(prefix, modulo_page)
-                ),
+          
+    @tgbot.on(
+        callbackquery.CallbackQuery(data=compile(b"Information\[(\d*)\]\((.*)\)"))
+    )
+    async def Information(event):
+        if not event.query.user_id == bot.uid:
+            return await event.answer(
+                "Please deploy your own Megastar userbot and don't try to use mine😕",
+                cache_time=0,
+                alert=True,
             )
-        ]
-    return pairs
 
+        page = int(event.data_match.group(1).decode("UTF-8"))
+        commands = event.data_match.group(2).decode("UTF-8")
+        try:
+            buttons = [
+                custom.Button.inline(
+                    "🔹 " + cmd[0], data=f"commands[{commands}[{page}]]({cmd[0]})"
+                )
+                for cmd in CMD_HELP_BOT[commands]["commands"].items()
+            ]
+        except KeyError:
+            return await event.answer(
+                "No Description is written for this plugin", cache_time=0, alert=True
+            )
 
-def ibuild_keyboard(buttons):
-    keyb = []
-    for btn in buttons:
-        if btn[2] and keyb:
-            keyb[-1].append(Button.url(btn[0], btn[1]))
+        buttons = [buttons[i : i + 2] for i in range(0, len(buttons), 2)]
+        buttons.append([custom.Button.inline("☜", data=f"page({page})")])
+        await event.edit(
+            f"**Plugin Name ☞:** `{commands}`\n** Number of commands found ☞:** `{len(CMD_HELP_BOT[commands]['commands'])}`",
+            buttons=buttons,
+            link_preview=False,
+        )
+
+    @tgbot.on(
+        callbackquery.CallbackQuery(data=compile(b"commands\[(.*)\[(\d*)\]\]\((.*)\)"))
+    )
+    async def commands(event):
+        if not event.query.user_id == bot.uid:
+            return await event.answer(
+                "Please Deploy your own Megastar userbot and don't try to use mine😕",
+                cache_time=0,
+                alert=True,
+            )
+
+        cmd = event.data_match.group(1).decode("UTF-8")
+        page = int(event.data_match.group(2).decode("UTF-8"))
+        commands = event.data_match.group(3).decode("UTF-8")
+
+        result = f"**Plugin Name ☞:** `{cmd}`\n"
+        if CMD_HELP_BOT[cmd]["info"]["info"] == "":
+            if not CMD_HELP_BOT[cmd]["info"]["warning"] == "":
+                result += f"**⬇️ Official:** {'✅' if CMD_HELP_BOT[cmd]['info']['official'] else '❌'}\n"
+                result += f"**⚠️ Warning :** {CMD_HELP_BOT[cmd]['info']['warning']}\n\n"
+            else:
+                result += f"**⬇️ Official:** {'✅' if CMD_HELP_BOT[cmd]['info']['official'] else '❌'}\n\n"
         else:
-            keyb.append([Button.url(btn[0], btn[1])])
-    return keyb
+            result += f"**⬇️ Official:** {'✅' if CMD_HELP_BOT[cmd]['info']['official'] else '❌'}\n"
+            if not CMD_HELP_BOT[cmd]["info"]["warning"] == "":
+                result += f"**⚠️ Warning:** {CMD_HELP_BOT[cmd]['info']['warning']}\n"
+            result += f"**ℹ️ Info:** {CMD_HELP_BOT[cmd]['info']['info']}\n\n"
+
+        command = CMD_HELP_BOT[cmd]["commands"][commands]
+        if command["params"] is None:
+            result += f"**❀ commands:** `{COMMAND_HAND_LER[:1]}{command['command']}`\n"
+        else:
+            result += f"**❀ commands:** `{COMMAND_HAND_LER[:1]}{command['command']} {command['params']}`\n"
+
+        if command["example"] is None:
+            result += f"**✞ Explanation:** `{command['usage']}`\n\n"
+        else:
+            result += f"**✞ Explanation:** `{command['usage']}`\n"
+            result += f"**⌨ For Example:** `{COMMAND_HAND_LER[:1]}{command['example']}`\n\n"
+
+        await event.edit(
+            result,
+            buttons=[
+                custom.Button.inline("☜", data=f"Information[{page}]({cmd})")
+            ],
+            link_preview=False,
+        )
+
+
+# Idea from Hellbot
+
