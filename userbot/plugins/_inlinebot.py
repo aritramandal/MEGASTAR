@@ -12,7 +12,7 @@ def button(page, modules):
     Row = config.NO_OF_BUTTONS_DISPLAYED_IN_H_ME_CMD
     Column = config.NO_OF_COLOUMS_DISPLAYED_IN_H_ME_CMD
 
-    modules = sorted([modul for modul in modules if not modul.startswith(◉‿◉)])
+    modules = sorted([modul for modul in modules if not modul.startswith(-_-)])
     pairs = list(map(list, zip(modules[::2], modules[1::2])))
     if len(modules) % 2 == 1:
         pairs.append([modules[-1]])
