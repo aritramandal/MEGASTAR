@@ -30,7 +30,7 @@ def button(page, modules):
     buttons.append(
         [
             custom.Button.inline(
-                "☜," data=f"page({(max_pages - 1) if page == 0 else (page - 1)})"
+                "☜", data=f"page({(max_pages - 1) if page == 0 else (page - 1)})"
             ),
             custom.Button.inline(
               "⌧", data="close"
